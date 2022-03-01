@@ -1,48 +1,28 @@
-import utime
+import time
+import rp2
 from machine import Pin
-from rp2 import PIO, StateMachine, asm_pio
 
+# Define the blink program.  It has one GPIO to bind to on the set instruction, which is an output pin.
+# Use lots of delays to make the blinking visible by eye.
+@rp2.asm_pio(set_init=rp2.PIO.OUT_LOW)
+def blink():
+    wrap_target()
+    set(pins, 1)   [31]
+    nop()          [31]
+    nop()          [31]
+    nop()          [31]
+    nop()          [31]
+    set(pins, 0)   [31]
+    nop()          [31]
+    nop()          [31]
+    nop()          [31]
+    nop()          [31]
+    wrap()
 
-@asm_pio(set_init=(PIO.OUT_LOW,) * 4,
-         out_init=(PIO.OUT_LOW,) * 4,
-         out_shiftdir=PIO.SHIFT_RIGHT,
-         in_shiftdir=PIO.SHIFT_LEFT)
-def run_digitals():
-    pull()
-    mov(x, osr)  # num steps
+# Instantiate a state machine with the blink program, at 2000Hz, with set bound to Pin(25) (LED on the rp2 board)
+sm = rp2.StateMachine(0, blink, freq=2000, set_base=Pin(25))
 
-    pull()
-    mov(y, osr)  # step pattern
-
-    jmp(not_x, "end")
-
-    label("loop")
-    jmp(not_osre, "step")  # loop pattern if exhausted
-    mov(osr, y)
-
-    label("step")
-    out(pins, 4)[31]
-
-    jmp(x_dec, "loop")
-    label("end")
-
-    irq(rel(0))
-
-
-sm = StateMachine(1, prog=run_digitals, freq=100000)
-
-
-def main():
-    led = Pin(2, Pin.OUT)
-    enabled = False
-    while True:
-        if enabled:
-            led.off()
-        else:
-            led.on()
-        utime.sleep_ms(1000)
-        enabled = not enabled
-
-
-if __name__ == '__main__':
-    main()
+# Run the state machine for 3 seconds.  The LED should blink.
+sm.active(1)
+time.sleep(3)
+sm.active(0)
