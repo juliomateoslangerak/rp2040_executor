@@ -25,20 +25,18 @@ def reset(state, event):
     print("resetting...")
 
 
+# Main state machine
 executor = StateMachine("executor")
 
-off = StateMachine("off")
-reset = State("reset")
-
-off.add_state(reset, initial=True)
-
+# main states of the state machine
+off = State("off")
 on = StateMachine("on")
-on.handlers = {"enter": initialize}
+
 waiting_connection = State("waiting_connection")
 aborted = State("aborted")
 idle = State("idle")
-
 active = StateMachine("active")
+
 choosing_action = State("choosing_action")
 writing_digital = State("writing_digital")
 writing_analogue = State("writing_analogue")
@@ -66,10 +64,10 @@ on.add_states(waiting_connection,
               active)
 on.set_initial_state(waiting_connection)
 
-
 executor.add_states(on, off)
 executor.set_initial_state(off)
 
+# Add transitions
 executor.add_transition(off, on,
                         events=["initialize"], after=wait_connection)
 executor.add_transition(on, off,
@@ -81,12 +79,14 @@ on.add_transition(aborted, idle,
 on.add_transition(active, idle,
                   events=["action_finished"])
 
+# Add handlers
+on.handlers = {"enter": initialize}
+
+
 if __name__ == "__main__":
     executor.initialize()
     assert executor.state.name == "off"
-    assert executor.leaf_state.name == "reset"
     executor.dispatch(Event("initialize"))
-
     assert executor.root_machine.name == "executor"
     assert executor.state.name == "on"
     assert executor.leaf_state.name == "idle"
