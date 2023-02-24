@@ -1,25 +1,45 @@
-from pysm.pysm import State, StateMachine
+from time import sleep
+
+from pysm.pysm import State, StateMachine, Event
+
+
+def initialize(state, event):
+    print("initializing...")
+
+
+def wait_connection(state, event):
+    print("waiting connection...")
+    sleep(3)
+    print("... connected")
+    executor.dispatch(Event("connected"))
+
+
+def abort(state, event):
+    print("Aborting...")
+    sleep(1)
+    print("... abort condition released")
+    executor.dispatch(Event("abort_condition_released"))
+
+
+def reset(state, event):
+    print("resetting...")
 
 
 executor = StateMachine("executor")
-starting = State("starting")
-initialising = State("initialising")
-resetting = State("resetting")
-off = State("off")
+
+off = StateMachine("off")
+reset = State("reset")
+
+off.add_state(reset, initial=True)
 
 on = StateMachine("on")
+on.handlers = {"enter": initialize}
 waiting_connection = State("waiting_connection")
-sending_configuration = State("sending_configuration")
 aborted = State("aborted")
 idle = State("idle")
 
-on.add_states(waiting_connection,
-              sending_configuration,
-              aborted,
-              idle)
-on.set_initial_state(waiting_connection)
-
-running_action = StateMachine("running_action")
+active = StateMachine("active")
+choosing_action = State("choosing_action")
 writing_digital = State("writing_digital")
 writing_analogue = State("writing_analogue")
 setting_nr_reps = State("setting_nr_reps")
@@ -29,25 +49,44 @@ setting_analogues_table = State("setting_analogues_table")
 running_experiment = State("running_experiment")
 running_sequence = State("running_sequence")
 
-running_action.add_states(writing_digital,
-                          writing_analogue,
-                          setting_nr_reps,
-                          setting_rep_duration,
-                          setting_digital_table,
-                          setting_analogues_table,
-                          running_experiment,
-                          running_sequence)
+active.add_states(choosing_action,
+                  writing_digital,
+                  writing_analogue,
+                  setting_nr_reps,
+                  setting_rep_duration,
+                  setting_digital_table,
+                  setting_analogues_table,
+                  running_experiment,
+                  running_sequence)
+active.set_initial_state(choosing_action)
 
-executor.add_states(starting,
-                    initialising,
-                    resetting,
-                    on,
-                    off,
-                    running_action)
-executor.set_initial_state(starting)
-
-
-def initialize(state, event):
-    print("initializing...")
+on.add_states(waiting_connection,
+              aborted,
+              idle,
+              active)
+on.set_initial_state(waiting_connection)
 
 
+executor.add_states(on, off)
+executor.set_initial_state(off)
+
+executor.add_transition(off, on,
+                        events=["initialize"], after=wait_connection)
+executor.add_transition(on, off,
+                        events=["reset", "turn_off"], after=initialize)
+on.add_transition(waiting_connection, aborted,
+                  events={"connected"}, after=abort)
+on.add_transition(aborted, idle,
+                  events=["abort_condition_released"])
+on.add_transition(active, idle,
+                  events=["action_finished"])
+
+if __name__ == "__main__":
+    executor.initialize()
+    assert executor.state.name == "off"
+    assert executor.leaf_state.name == "reset"
+    executor.dispatch(Event("initialize"))
+
+    assert executor.root_machine.name == "executor"
+    assert executor.state.name == "on"
+    assert executor.leaf_state.name == "idle"
