@@ -21,7 +21,7 @@ def reset(state, event):
     print(f"Now I'm in state {executor.leaf_state.name}")
     print("resetting...")
 
-def _run_action_sim(state, event)
+def _run_action_sim(state, event):
     print(f"Now I'm in state {executor.leaf_state.name}")
     print(f"I'm in state {state.parent.name}")
     print(f"I'm in leaf state {state.name}")
