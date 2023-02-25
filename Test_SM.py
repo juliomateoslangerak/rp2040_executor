@@ -27,7 +27,7 @@ def _run_action_sim(state, event):
     print(f"I'm in leaf state {state.name}")
     print(f"I was told to: {event.name}")
     print(f"with input: {event.input}")
-    print(f"and using these data: {event.cargo}")
+    print(f"and using this data: {event.cargo}")
 
 def write_digital(state, event: Event):
     _run_action_sim(state, event)
@@ -55,7 +55,6 @@ def set_analogues_table(state, event: Event):
 
 def run_experiment(state, event: Event):
     _run_action_sim(state, event)
-    executor.dispatch(Event("action_finished"))
 
 def run_sequence(state, event: Event):
     _run_action_sim(state, event)
@@ -149,7 +148,40 @@ if __name__ == "__main__":
     assert executor.root_machine.name == "executor"
     assert executor.state.name == "on"
     assert executor.leaf_state.name == "idle"
-    executor.dispatch(Event("run_action", input="write_digital", digitals=42))
+    executor.dispatch(Event("run_action", input="write_digital", digital=42))
+    assert executor.root_machine.name == "executor"
+    assert executor.state.name == "on"
+    assert executor.leaf_state.name == "idle"
+    executor.dispatch(Event("run_action", input="write_analogue", analogue=31222))
+    assert executor.root_machine.name == "executor"
+    assert executor.state.name == "on"
+    assert executor.leaf_state.name == "idle"
+    executor.dispatch(Event("run_action", input="set_nr_reps", nr_reps=12))
+    assert executor.root_machine.name == "executor"
+    assert executor.state.name == "on"
+    assert executor.leaf_state.name == "idle"
+    executor.dispatch(Event("run_action", input="set_rep_duration", duration=666))
+    assert executor.root_machine.name == "executor"
+    assert executor.state.name == "on"
+    assert executor.leaf_state.name == "idle"
+    executor.dispatch(Event("run_action", input="set_digital_table", digital_table=[(0, 12), (3, 34), (23, 12)]))
+    assert executor.root_machine.name == "executor"
+    assert executor.state.name == "on"
+    assert executor.leaf_state.name == "idle"
+    executor.dispatch(Event("run_action", input="set_analogues_table", digital_table=[(0, 2000), (3, 3000), (23, 4000)]))
+    assert executor.root_machine.name == "executor"
+    assert executor.state.name == "on"
+    assert executor.leaf_state.name == "idle"
+    # This action is now not calling a action finished event. we can then test the state
+    executor.dispatch(Event("run_action", input="run_experiment", experiment_nr=0))
+    assert executor.root_machine.name == "executor"
+    assert executor.state.name == "on"
+    assert executor.leaf_state.name == "running_experiment"
+    executor.dispatch(Event("action_finished"))
+    assert executor.root_machine.name == "executor"
+    assert executor.state.name == "on"
+    assert executor.leaf_state.name == "idle"
+    executor.dispatch(Event("run_action", input="run_sequence", sequence=[12, 34, 12]))
     assert executor.root_machine.name == "executor"
     assert executor.state.name == "on"
     assert executor.leaf_state.name == "idle"
