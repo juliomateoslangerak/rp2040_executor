@@ -110,6 +110,8 @@ on.add_transition(aborted, idle,
                   events=["abort_condition_released"])
 on.add_transition(active, idle,
                   events=["action_finished"])
+on.add_transition(active, aborted,
+                  events=["abort"], action=abort)
 on.add_transition(idle, writing_digital,
                   events=["run_action"], input=["write_digital"], after=write_digital)
 on.add_transition(idle, writing_analogue,
@@ -172,6 +174,7 @@ if __name__ == "__main__":
     assert executor.root_machine.name == "executor"
     assert executor.state.name == "on"
     assert executor.leaf_state.name == "idle"
+
     # This action is now not calling a action finished event. we can then test the state
     executor.dispatch(Event("run_action", input="run_experiment", experiment_nr=0))
     assert executor.root_machine.name == "executor"
@@ -181,6 +184,21 @@ if __name__ == "__main__":
     assert executor.root_machine.name == "executor"
     assert executor.state.name == "on"
     assert executor.leaf_state.name == "idle"
+
+    # We test now if the action can be interrupted
+    executor.dispatch(Event("run_action", input="run_experiment", experiment_nr=0))
+    assert executor.root_machine.name == "executor"
+    assert executor.state.name == "on"
+    assert executor.leaf_state.name == "running_experiment"
+    executor.dispatch(Event("abort"))
+    assert executor.root_machine.name == "executor"
+    assert executor.state.name == "on"
+    assert executor.leaf_state.name == "aborted"
+    executor.dispatch(Event("abort_condition_released"))
+    assert executor.root_machine.name == "executor"
+    assert executor.state.name == "on"
+    assert executor.leaf_state.name == "idle"
+
     executor.dispatch(Event("run_action", input="run_sequence", sequence=[12, 34, 12]))
     assert executor.root_machine.name == "executor"
     assert executor.state.name == "on"
