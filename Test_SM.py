@@ -13,6 +13,8 @@ listen_thread = None
 def initialize(state, event):
     print(f"Now I'm in state {executor.leaf_state.name}")
     print("initializing...")
+    if listen_thread is not None:
+        print(f"listen thread is alive: {listen_thread.is_alive()}")
 
 def wait_connection(state, event):
     print(f"Now I'm in state {executor.leaf_state.name}")
@@ -97,17 +99,20 @@ def listen_commands():
         if command["command"] == "abort":
             executor.dispatch(Event("abort"))
             continue
-
-        if command["nr_of_messages"] > 0:
-            data = conn.recv(command["nr_of_messages"] * command["message_len"])
-            data = [data[i:i + command["message_len"]].decode() for i in range(0, len(data), command["message_len"])]
-            cargo = {"data": data}
+        elif command["command"] == "disconnect":
+            executor.dispatch(Event("reset_connection"))
+            # break
         else:
-            cargo = None
+            if command["nr_of_messages"] > 0:
+                data = conn.recv(command["nr_of_messages"] * command["message_len"])
+                data = [data[i:i + command["message_len"]].decode() for i in range(0, len(data), command["message_len"])]
+                cargo = {"data": data}
+            else:
+                cargo = None
 
-        executor.dispatch(Event("run_action",
-                                input=command["command"],
-                                cargo=cargo))
+            executor.dispatch(Event("run_action",
+                                    input=command["command"],
+                                    cargo=cargo))
 
 
 # Main state machine
@@ -183,7 +188,10 @@ on.add_transition(idle, running_sequence,
 executor.add_transition(off, on,
                         events=["initialize"], action=initialize, after=wait_connection)
 executor.add_transition(on, off,
-                        events=["reset", "turn_off"], after=initialize)
+                        events=["reset", "reset_connection"], after=initialize)
+executor.add_transition(on, off,
+                        events=["turn_off"])
+
 
 # Add handlers
 running_experiment.handlers = {"abort": on_abort}

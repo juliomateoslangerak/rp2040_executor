@@ -27,7 +27,7 @@ class Connection:
             raise err
 
     def is_connected(self):
-        """Return whether or not our connection is active."""
+        """Return whether our connection is active."""
         # TODO: Implement some kind of ping to check if we can actually send data
         return self.connection is not None
 
@@ -37,6 +37,7 @@ class Connection:
 
     def disconnect(self):
         if self.connection is not None:
+            self.run_command("disconnect")
             self.connection.close()
             self.connection = None
 
@@ -294,4 +295,16 @@ class Connection:
             send_list.append(value)
 
         self.run_command('run_sequence', send_list, msg_length)
+
+
+if __name__ == "__main__":
+    conn = Connection(EXECUTOR_IP, EXECUTOR_PORT)
+    conn.connect()
+    time.sleep(2)
+    conn.abort()
+    time.sleep(2)
+    conn.run_experiment()
+    time.sleep(1)
+    conn.abort()
+    conn.disconnect()
 
